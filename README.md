@@ -10,6 +10,7 @@ This application provides a seamless experience for browsing and viewing cat ima
 - Elegant error handling and loading states
 - Type-safe data management
 - Comprehensive test coverage
+- Conventional commit enforcement
 
 ## Architecture
 
@@ -18,7 +19,7 @@ The application follows Clean Architecture principles with a clear separation of
 ```
 src/
 ├── core/         # Core utilities and services
-│   ├── network/  # Network layer (JobberNetwork, AxiosNetworkClient)
+│   ├── network/  # Network layer (CataasNetwork, AxiosNetworkClient)
 │   ├── logger/   # Logging functionality
 │   ├── config/   # Application configuration
 │   └── utils/    # Utility classes (Either pattern)
@@ -49,22 +50,22 @@ src/
 The application maintains comprehensive test coverage across different layers:
 
 ```
-----------------------------|---------|----------|---------|---------|----------
-File                        | % Stmts | % Branch | % Funcs | % Lines | Uncovered
-----------------------------|---------|----------|---------|---------|----------
-All files                   |   79.74 |    57.14 |   77.77 |   80.76 |
-core/network               |       0 |        0 |      20 |       0 |
-core/utils                 |     100 |      100 |     100 |     100 |
-data/repositories          |     100 |      100 |     100 |     100 |
-domain/entities            |   26.66 |    71.42 |      20 |   26.66 |
-presentation/hooks         |   97.43 |       50 |     100 |     100 |
-----------------------------|---------|----------|---------|---------|----------
+----------------------------|---------|----------|---------|---------|-------------------
+File                        | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------------------------|---------|----------|---------|---------|-------------------
+All files                   |   57.85 |    44.44 |   55.76 |   58.82 |                   
+ core/config                |      80 |      100 |       0 |      80 | 11                
+ core/network               |   11.42 |        0 |   10.52 |   11.76 |                   
+ core/utils                 |     100 |      100 |     100 |     100 |                   
+ data/repositories          |     100 |      100 |     100 |     100 |                   
+ domain/entities            |      20 |    55.55 |   16.66 |      20 | 31-78             
+ presentation/hooks         |    92.5 |       50 |     100 |   94.87 |                   
+----------------------------|---------|----------|---------|---------|-------------------
 ```
 
 ### Test Statistics
 - Test Suites: 4 passed, 4 total
 - Tests: 23 passed, 23 total
-- Coverage: 79.74% statement coverage
 
 ## Getting Started
 
@@ -89,6 +90,9 @@ yarn start
 # Run on iOS
 yarn ios
 
+# Run on iOS simulator
+yarn ios:sim
+
 # Run on Android
 yarn android
 ```
@@ -111,7 +115,7 @@ The network layer implements a facade pattern with type-safe error handling:
 
 ```typescript
 // Example network request
-const response = await jobberNetwork.get<Cat[]>('/api/cats');
+const response = await cataasNetwork.get<Cat[]>('/api/cats');
 ```
 
 ### Repository Layer
@@ -124,7 +128,7 @@ export class CatRepository implements CatRepositoryInterface {
     const queryParams = new URLSearchParams();
     queryParams.append('limit', limit.toString());
 
-    const response = await jobberNetwork.get<Cat[]>(`/api/cats?${queryParams.toString()}`);
+    const response = await cataasNetwork.get<Cat[]>(`/api/cats?${queryParams.toString()}`);
 
     return response.resolve(
       error => Either.failure<ApiError, CatModel[]>(error),
@@ -139,7 +143,7 @@ export class CatRepository implements CatRepositoryInterface {
 View models manage UI state and business logic:
 
 ```typescript
-export function useCatsListViewModel(params: { limit: number }) {
+export function useCatsListViewModel(limit: number) {
   const [cats, setCats] = useState<CatModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
@@ -147,26 +151,77 @@ export function useCatsListViewModel(params: { limit: number }) {
   const { getCatsUseCase } = useInjection();
 
   const loadCats = async () => {
-    setLoading(true);
-    const result = await getCatsUseCase.execute(params);
-    
-    result.resolve(
-      err => {
-        setError(err);
-        setLoading(false);
-      },
-      data => {
-        setCats(data);
-        setLoading(false);
-      },
-    );
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await getCatsUseCase.execute(limit);
+
+      setLoading(false);
+      result.resolve(
+        err => {
+          setError(err);
+        },
+        data => {
+          setCats(data);
+        },
+      );
+    } catch (error) {
+      setError(error as ApiError);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    jobberLogger.info(`Loading cats with limit: ${params.limit}`);
     loadCats();
-  }, [params.limit]);
+  }, [limit]);
 
   return { cats, loading, error, refetch: loadCats };
 }
+```
+
+## Development Practices
+
+### Conventional Commits
+
+This project enforces the [Conventional Commits](https://www.conventionalcommits.org/) format for all commit messages using commitlint and husky. Each commit message must start with one of the following types:
+
+- `feat:` - New features
+- `fix:` - Bug fixes 
+- `docs:` - Documentation changes
+- `style:` - Formatting changes
+- `refactor:` - Code changes that neither fix bugs nor add features
+- `perf:` - Performance improvements
+- `test:` - Adding or updating tests
+- `build:` - Changes to build system or dependencies
+- `ci:` - Changes to CI configuration
+- `chore:` - Other changes that don't modify src or test files
+- `revert:` - Reverts a previous commit
+
+## License
+
+This project is licensed under the MIT License - see below for details:
+
+```
+MIT License
+
+Copyright (c) 2024 CataasApp
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
