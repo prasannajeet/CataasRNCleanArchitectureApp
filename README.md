@@ -1,97 +1,172 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Cat Image Browser App
 
-# Getting Started
+A React Native application for browsing cat images from the [CATAAS API](https://cataas.com/) (Cat as a Service). This project demonstrates clean architecture principles, comprehensive testing, and modern React Native development practices.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Overview
 
-## Step 1: Start Metro
+This application provides a seamless experience for browsing and viewing cat images, featuring:
+- A responsive list view of cat images with thumbnails
+- Detailed view for individual cats
+- Elegant error handling and loading states
+- Type-safe data management
+- Comprehensive test coverage
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Architecture
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+The application follows Clean Architecture principles with a clear separation of concerns:
 
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```
+src/
+├── core/         # Core utilities and services
+│   ├── network/  # Network layer (JobberNetwork, AxiosNetworkClient)
+│   ├── logger/   # Logging functionality
+│   ├── config/   # Application configuration
+│   └── utils/    # Utility classes (Either pattern)
+├── data/         # Data access layer with repositories
+│   └── repositories/ # Repositories for data sources
+├── domain/       # Business logic and entities
+│   ├── entities/ # Domain models (CatModel)
+│   └── usecases/ # Business logic use cases
+├── presentation/ # UI components and state management
+│   ├── components/  # UI components organized by feature
+│   ├── screens/     # Screen components (CatsListScreen, CatDetailScreen)
+│   ├── navigation/  # Navigation configuration (AppNavigator)
+│   ├── hooks/       # Custom hooks and view models
+│   └── styles/      # Shared styles and theme
+└── di/           # Dependency injection (useInjection)
 ```
 
-## Step 2: Build and run your app
+### Key Design Patterns
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+- **Repository Pattern**: Abstracts data access behind interfaces
+- **Either Pattern**: Type-safe error handling through `Either<E, A>`
+- **Dependency Injection**: Manages dependencies via `useInjection`
+- **ViewModel Pattern**: Custom hooks for UI state management
+- **Navigation**: Stack-based navigation with React Navigation
 
-### Android
+## Test Coverage
 
-```sh
-# Using npm
-npm run android
+The application maintains comprehensive test coverage across different layers:
 
-# OR using Yarn
+```
+----------------------------|---------|----------|---------|---------|----------
+File                        | % Stmts | % Branch | % Funcs | % Lines | Uncovered
+----------------------------|---------|----------|---------|---------|----------
+All files                   |   79.74 |    57.14 |   77.77 |   80.76 |
+core/network               |       0 |        0 |      20 |       0 |
+core/utils                 |     100 |      100 |     100 |     100 |
+data/repositories          |     100 |      100 |     100 |     100 |
+domain/entities            |   26.66 |    71.42 |      20 |   26.66 |
+presentation/hooks         |   97.43 |       50 |     100 |     100 |
+----------------------------|---------|----------|---------|---------|----------
+```
+
+### Test Statistics
+- Test Suites: 4 passed, 4 total
+- Tests: 23 passed, 23 total
+- Coverage: 79.74% statement coverage
+
+## Getting Started
+
+### Prerequisites
+
+- Yarn
+- Standard React Native development environment
+
+### Installation
+
+```bash
+# Install dependencies
+yarn
+```
+
+### Running the App
+
+```bash
+# Start Metro bundler
+yarn start
+
+# Run on iOS
+yarn ios
+
+# Run on Android
 yarn android
 ```
 
-### iOS
+### Running Tests
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+```bash
+# Run all tests
+yarn test
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+# Run tests with coverage
+yarn test --coverage
 ```
 
-Then, and every time you update your native dependencies, run:
+## Implementation Details
 
-```sh
-bundle exec pod install
+### Network Layer
+
+The network layer implements a facade pattern with type-safe error handling:
+
+```typescript
+// Example network request
+const response = await jobberNetwork.get<Cat[]>('/api/cats');
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+### Repository Layer
 
-```sh
-# Using npm
-npm run ios
+The repository layer abstracts data access logic:
 
-# OR using Yarn
-yarn ios
+```typescript
+export class CatRepository implements CatRepositoryInterface {
+  async fetchAllCatsPaginated(limit: number): Promise<Either<ApiError, CatModel[]>> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('limit', limit.toString());
+
+    const response = await jobberNetwork.get<Cat[]>(`/api/cats?${queryParams.toString()}`);
+
+    return response.resolve(
+      error => Either.failure<ApiError, CatModel[]>(error),
+      cats => Either.success<ApiError, CatModel[]>(cats.map(cat => new CatModel(cat))),
+    );
+  }
+}
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+### ViewModel Pattern with Hooks
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+View models manage UI state and business logic:
 
-## Step 3: Modify your app
+```typescript
+export function useCatsListViewModel(params: { limit: number }) {
+  const [cats, setCats] = useState<CatModel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
 
-Now that you have successfully run the app, let's make changes!
+  const { getCatsUseCase } = useInjection();
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+  const loadCats = async () => {
+    setLoading(true);
+    const result = await getCatsUseCase.execute(params);
+    
+    result.resolve(
+      err => {
+        setError(err);
+        setLoading(false);
+      },
+      data => {
+        setCats(data);
+        setLoading(false);
+      },
+    );
+  };
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+  useEffect(() => {
+    jobberLogger.info(`Loading cats with limit: ${params.limit}`);
+    loadCats();
+  }, [params.limit]);
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+  return { cats, loading, error, refetch: loadCats };
+}
+```
