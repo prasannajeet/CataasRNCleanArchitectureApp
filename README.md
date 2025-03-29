@@ -1,5 +1,12 @@
 # Cat Image Browser App
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![React Native](https://img.shields.io/badge/React%20Native-v0.78.1-blue)](https://reactnative.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-v5.0.4-blue)](https://www.typescriptlang.org/)
+[![Test Coverage](https://img.shields.io/badge/coverage-57.85%25-yellow)]()
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+
 A React Native application for browsing cat images from the [CATAAS API](https://cataas.com/) (Cat as a Service). This project demonstrates clean architecture principles, comprehensive testing, and modern React Native development practices.
 
 ## Overview
