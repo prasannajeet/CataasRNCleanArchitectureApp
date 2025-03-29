@@ -5,6 +5,7 @@ A React Native application for browsing cat images from the [CATAAS API](https:/
 ## Overview
 
 This application provides a seamless experience for browsing and viewing cat images, featuring:
+
 - A responsive list view of cat images with thumbnails
 - Detailed view for individual cats
 - Elegant error handling and loading states
@@ -64,6 +65,7 @@ All files                   |   57.85 |    44.44 |   55.76 |   58.82 |
 ```
 
 ### Test Statistics
+
 - Test Suites: 4 passed, 4 total
 - Tests: 23 passed, 23 total
 
@@ -71,7 +73,8 @@ All files                   |   57.85 |    44.44 |   55.76 |   58.82 |
 
 ### Prerequisites
 
-- Yarn
+- Yarn (npm is not supported - the project has a preinstall check)
+- Node.js >=18
 - Standard React Native development environment
 
 ### Installation
@@ -120,19 +123,26 @@ const response = await cataasNetwork.get<Cat[]>('/api/cats');
 
 ### Repository Layer
 
-The repository layer abstracts data access logic:
+The repository layer abstracts data access logic and formats API responses:
 
 ```typescript
 export class CatRepository implements CatRepositoryInterface {
   async fetchAllCatsPaginated(limit: number): Promise<Either<ApiError, CatModel[]>> {
+    // Build the query parameters
     const queryParams = new URLSearchParams();
     queryParams.append('limit', limit.toString());
 
-    const response = await cataasNetwork.get<Cat[]>(`/api/cats?${queryParams.toString()}`);
+    // Make the API request
+    const response = await cataasNetwork.get<Cat[]>(
+      `/api/cats?${queryParams.toString()}`,
+    );
 
     return response.resolve(
       error => Either.failure<ApiError, CatModel[]>(error),
-      cats => Either.success<ApiError, CatModel[]>(cats.map(cat => new CatModel(cat))),
+      cats =>
+        Either.success<ApiError, CatModel[]>(
+          cats.map(cat => new CatModel(cat)),
+        ),
     );
   }
 }
@@ -140,7 +150,7 @@ export class CatRepository implements CatRepositoryInterface {
 
 ### ViewModel Pattern with Hooks
 
-View models manage UI state and business logic:
+View models manage UI state and business logic using custom React hooks:
 
 ```typescript
 export function useCatsListViewModel(limit: number) {
@@ -148,8 +158,10 @@ export function useCatsListViewModel(limit: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
 
-  const { getCatsUseCase } = useInjection();
+  // Get dependencies
+  const {getCatsUseCase} = useInjection();
 
+  // Load data function
   const loadCats = async () => {
     try {
       setLoading(true);
@@ -180,6 +192,33 @@ export function useCatsListViewModel(limit: number) {
 }
 ```
 
+### Use Case Pattern
+
+Business logic is encapsulated in use cases that operate on repository data:
+
+```typescript
+export class GetCatsUseCase {
+  constructor(private catRepository: CatRepositoryInterface) {}
+
+  async execute(limit: number): Promise<Either<ApiError, CatModel[]>> {
+    const result = await this.catRepository.fetchAllCatsPaginated(limit);
+
+    return result.resolve(
+      error => Either.failure<ApiError, CatModel[]>(error),
+      cats => {
+        let allCats = [...cats];
+        // Apply business logic - sort by creation date
+        allCats.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        return Either.success<ApiError, CatModel[]>(allCats);
+      },
+    );
+  }
+}
+```
+
 ## Development Practices
 
 ### Conventional Commits
@@ -187,7 +226,7 @@ export function useCatsListViewModel(limit: number) {
 This project enforces the [Conventional Commits](https://www.conventionalcommits.org/) format for all commit messages using commitlint and husky. Each commit message must start with one of the following types:
 
 - `feat:` - New features
-- `fix:` - Bug fixes 
+- `fix:` - Bug fixes
 - `docs:` - Documentation changes
 - `style:` - Formatting changes
 - `refactor:` - Code changes that neither fix bugs nor add features
@@ -198,9 +237,18 @@ This project enforces the [Conventional Commits](https://www.conventionalcommits
 - `chore:` - Other changes that don't modify src or test files
 - `revert:` - Reverts a previous commit
 
+## Contributing
+
+We welcome contributions to this project! Please check out our [Contributing Guidelines](./CONTRIBUTING.md) for detailed information on how to:
+
+- Set up your development environment
+- Follow our coding standards
+- Submit pull requests
+- Report bugs or request features
+
 ## License
 
-This project is licensed under the MIT License - see below for details:
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
 ```
 MIT License
